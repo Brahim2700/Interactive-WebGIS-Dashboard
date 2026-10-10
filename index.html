@@ -6,17 +6,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive WebGIS Dashboard</title>
     
-    <!-- Link to our CSS stylesheet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
-    <!-- Main container for our content -->
-    <div class="container">
-        <h1>This Website is Under Construction</h1>
-        <p>Coming Soon: Interactive WebGIS Dashboard</p>
-    </div>
+    <header class="topbar">
+        <a class="brand" href="#" aria-label="Atlas WebGIS home">
+            <span class="brand-mark" aria-hidden="true">A</span>
+            <span class="brand-name">ATLAS</span>
+            <span class="brand-divider" aria-hidden="true"></span>
+            <span class="brand-section">WEBGIS</span>
+        </a>
+        <div class="view-label">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span>WORLD VIEW</span>
+        </div>
+        <button class="locate-button" id="locate-button" type="button" title="Locate me">
+            <span class="locate-icon" aria-hidden="true">&#8982;</span>
+            <span>Locate me</span>
+        </button>
+    </header>
 
-    <!-- Link to our JavaScript file -->
-    <script src="js/main.js"></script>
+    <main class="map-shell">
+        <div id="map" role="application" aria-label="Interactive map of the world"></div>
+        <div class="map-readout" aria-live="polite">
+            <span class="readout-label">MAP CENTER</span>
+            <span id="coordinates">Loading map...</span>
+            <span class="readout-divider" aria-hidden="true"></span>
+            <span class="readout-label">ZOOM</span>
+            <span id="zoom-level">--</span>
+        </div>
+        <div id="map-message" class="map-message" role="status" hidden></div>
+    </main>
+
+    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script defer src="js/main.js"></script>
 </body>
 </html>
