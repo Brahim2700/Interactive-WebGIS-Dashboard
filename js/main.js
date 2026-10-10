@@ -76,7 +76,7 @@ if (typeof L === "undefined") {
 				throw new Error("Projection library unavailable");
 			}
 
-			const zone = Math.min(50, Math.max(42, Math.round(latitude)));
+			const zone = Math.min(50, Math.max(42, Math.floor(latitude) + 1));
 			const epsg = 3942 + zone - 42;
 			const falseNorthing = 1200000 + (zone - 42) * 1000000;
 			const definition = `+proj=lcc +lat_0=${zone} +lon_0=3 +lat_1=${zone - 0.75} +lat_2=${zone + 0.75} +x_0=1700000 +y_0=${falseNorthing} +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs`;
