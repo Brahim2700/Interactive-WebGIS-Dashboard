@@ -1,12 +1,10 @@
 const mapMessage = document.getElementById("map-message");
 const coordinates = document.getElementById("coordinates");
 const cartesianCoordinates = document.getElementById("cartesian-coordinates");
-const epciDetails = document.getElementById("epci-details");
+const projectionDetails = document.getElementById("projection-details");
 const locationStatus = document.getElementById("location-status");
 const zoomLevel = document.getElementById("zoom-level");
 const locateButton = document.getElementById("locate-button");
-
-const lambert93 = "+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +units=m +no_defs";
 
 function showMessage(message) {
 	mapMessage.textContent = message;
@@ -40,12 +38,12 @@ if (typeof L === "undefined") {
 	let locationMarker;
 	let locationRequest = 0;
 
-	async function findEpci(latitude, longitude) {
+	async function findCommune(latitude, longitude) {
 		const communeUrl = new URL("https://geo.api.gouv.fr/communes");
 		communeUrl.search = new URLSearchParams({
 			lat: latitude,
 			lon: longitude,
-			fields: "nom,code,codeDepartement,codeEpci",
+			fields: "codeDepartement",
 			format: "json"
 		});
 
@@ -55,60 +53,44 @@ if (typeof L === "undefined") {
 		}
 
 		const communes = await communeResponse.json();
-		const commune = communes[0];
-		if (!commune?.codeEpci) {
-			return { commune, epci: null };
-		}
-
-		const epciUrl = new URL(`https://geo.api.gouv.fr/epcis/${encodeURIComponent(commune.codeEpci)}`);
-		epciUrl.search = new URLSearchParams({ fields: "nom,code", format: "json" });
-		const epciResponse = await fetch(epciUrl);
-		if (!epciResponse.ok) {
-			throw new Error("EPCI lookup failed");
-		}
-
-		return { commune, epci: await epciResponse.json() };
+		return communes[0] || null;
 	}
 
-	async function updateEpci(latitude, longitude, requestId) {
-		locationStatus.textContent = "Looking up EPCI...";
-		epciDetails.textContent = "Querying official French data";
+	async function updateProjection(latitude, longitude, requestId) {
+		locationStatus.textContent = "Checking CC9 coverage...";
+		projectionDetails.textContent = "Checking mainland France";
+		cartesianCoordinates.textContent = "Calculating...";
 
 		try {
-			const { commune, epci } = await findEpci(latitude, longitude);
+			const commune = await findCommune(latitude, longitude);
 			if (requestId !== locationRequest) return;
 
-			if (!commune) {
-				locationStatus.textContent = "Outside France or no match";
-				cartesianCoordinates.textContent = "Lambert-93 applies to mainland France";
-				epciDetails.textContent = "No French commune found";
+			if (!commune || !/^(?:0[1-9]|[1-8]\d|9[0-5]|2[AB])$/.test(commune.codeDepartement || "")) {
+				locationStatus.textContent = "Outside CC9 coverage";
+				projectionDetails.textContent = "CC42–CC50 cover mainland France";
+				cartesianCoordinates.textContent = "Not available for this location";
 				return;
 			}
 
-			const isMetropolitanDepartment = /^(?:0[1-9]|[1-8]\d|9[0-5]|2[AB])$/.test(commune.codeDepartement);
-			if (!isMetropolitanDepartment) {
-				cartesianCoordinates.textContent = "Lambert-93 applies to mainland France";
-			} else if (typeof proj4 !== "undefined") {
-				proj4.defs("EPSG:2154", lambert93);
-				const [x, y] = proj4("EPSG:4326", "EPSG:2154", [longitude, latitude]);
-				cartesianCoordinates.textContent = `X ${Math.round(x).toLocaleString("fr-FR")} m · Y ${Math.round(y).toLocaleString("fr-FR")} m`;
-			} else {
-				cartesianCoordinates.textContent = "Projection library unavailable";
+			if (typeof proj4 === "undefined") {
+				throw new Error("Projection library unavailable");
 			}
 
-			if (!epci) {
-				locationStatus.textContent = "Position found";
-				epciDetails.textContent = `${commune.nom} · no EPCI listed`;
-				return;
-			}
+			const zone = Math.min(50, Math.max(42, Math.round(latitude)));
+			const epsg = 3942 + zone - 42;
+			const falseNorthing = 1200000 + (zone - 42) * 1000000;
+			const definition = `+proj=lcc +lat_0=${zone} +lon_0=3 +lat_1=${zone - 0.75} +lat_2=${zone + 0.75} +x_0=1700000 +y_0=${falseNorthing} +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs`;
+			proj4.defs(`EPSG:${epsg}`, definition);
+			const [x, y] = proj4("EPSG:4326", `EPSG:${epsg}`, [longitude, latitude]);
 
 			locationStatus.textContent = "Position found";
-			epciDetails.textContent = `${epci.nom} · ${epci.code} (SIREN)`;
+			projectionDetails.textContent = `CC${zone} · EPSG:${epsg}`;
+			cartesianCoordinates.textContent = `X ${Math.round(x).toLocaleString("fr-FR")} m · Y ${Math.round(y).toLocaleString("fr-FR")} m`;
 		} catch {
 			if (requestId !== locationRequest) return;
 			locationStatus.textContent = "Position found";
-			epciDetails.textContent = "EPCI lookup unavailable; check your connection";
-			cartesianCoordinates.textContent = "Could not verify Lambert-93 coverage";
+			projectionDetails.textContent = "Projection unavailable";
+			cartesianCoordinates.textContent = "Check your connection and retry";
 		}
 	}
 
@@ -121,7 +103,7 @@ if (typeof L === "undefined") {
 		const requestId = ++locationRequest;
 		locateButton.disabled = true;
 		locationStatus.textContent = "Requesting location...";
-		epciDetails.textContent = "Waiting for position";
+		projectionDetails.textContent = "Waiting for position";
 		navigator.geolocation.getCurrentPosition(
 			({ coords }) => {
 				const { latitude, longitude } = coords;
@@ -145,7 +127,7 @@ if (typeof L === "undefined") {
 				locationMarker.bindPopup("You are here").openPopup();
 				locateButton.disabled = false;
 				mapMessage.hidden = true;
-				updateEpci(latitude, longitude, requestId);
+				updateProjection(latitude, longitude, requestId);
 			},
 			(error) => {
 				if (requestId !== locationRequest) return;
