@@ -171,18 +171,29 @@ body {
     position: absolute;
     z-index: 400;
     right: 16px;
-    bottom: 28px;
-    display: flex;
-    min-height: 40px;
-    align-items: center;
-    gap: 10px;
-    padding: 0 12px;
+    bottom: 26px;
+    display: grid;
+    width: min(390px, calc(100% - 32px));
+    gap: 8px;
+    padding: 13px 14px 10px;
     border: 1px solid rgba(32, 51, 47, 0.1);
     border-radius: 3px;
     background: rgba(248, 248, 243, 0.96);
     box-shadow: 0 2px 8px rgba(32, 51, 47, 0.08);
-    font-variant-numeric: tabular-nums;
     font-size: 11px;
+}
+
+.readout-heading,
+.readout-row,
+.readout-footer {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    align-items: baseline;
+    gap: 10px;
+}
+
+.readout-heading {
+    padding-bottom: 2px;
 }
 
 .readout-label {
@@ -191,9 +202,28 @@ body {
     white-space: nowrap;
 }
 
-#coordinates,
-#zoom-level {
-    white-space: nowrap;
+.readout-row > span:last-child {
+    min-width: 0;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.epci-row {
+    align-items: start;
+}
+
+.readout-footer {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 8px;
+    padding-top: 5px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 9px;
+}
+
+.readout-footer a {
+    color: var(--green);
 }
 
 .map-message {
@@ -229,13 +259,26 @@ body {
 
     .map-readout {
         right: 10px;
-        bottom: 28px;
+        bottom: 26px;
+        width: calc(100% - 20px);
         gap: 7px;
-        padding: 0 8px;
+        padding: 11px 10px 9px;
         font-size: 10px;
     }
 
+    .readout-heading,
+    .readout-row {
+        grid-template-columns: 82px minmax(0, 1fr);
+        gap: 8px;
+    }
+
     .readout-label {
+        font-size: 8px;
+    }
+
+    .readout-footer {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px;
         font-size: 8px;
     }
 }

@@ -29,17 +29,33 @@
 
     <main class="map-shell">
         <div id="map" role="application" aria-label="Interactive map of the world"></div>
-        <div class="map-readout" aria-live="polite">
-            <span class="readout-label">MAP CENTER</span>
-            <span id="coordinates">Loading map...</span>
-            <span class="readout-divider" aria-hidden="true"></span>
-            <span class="readout-label">ZOOM</span>
-            <span id="zoom-level">--</span>
-        </div>
+        <section class="map-readout" aria-label="Location details" aria-live="polite">
+            <div class="readout-heading">
+                <span class="readout-label">YOUR POSITION</span>
+                <span id="location-status">Use Locate me</span>
+            </div>
+            <div class="readout-row">
+                <span class="readout-label">WGS84</span>
+                <span id="coordinates">--</span>
+            </div>
+            <div class="readout-row">
+                <span class="readout-label">LAMBERT-93</span>
+                <span id="cartesian-coordinates">X -- · Y --</span>
+            </div>
+            <div class="readout-row epci-row">
+                <span class="readout-label">EPCI</span>
+                <span id="epci-details">Not determined</span>
+            </div>
+            <div class="readout-footer">
+                <span>Coordinates shared with <a href="https://geo.api.gouv.fr/" target="_blank" rel="noopener noreferrer">geo.api.gouv.fr</a> for EPCI lookup</span>
+                <span>ZOOM <span id="zoom-level">--</span></span>
+            </div>
+        </section>
         <div id="map-message" class="map-message" role="status" hidden></div>
     </main>
 
     <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script defer src="https://unpkg.com/proj4@2.12.1/dist/proj4.js"></script>
     <script defer src="js/main.js"></script>
 </body>
 </html>
