@@ -1,61 +1,188 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Meta tags for character encoding and responsive design -->
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive WebGIS Dashboard</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#10263e">
+    <meta name="description" content="Find the appropriate RGF93 / Lambert CC9 projection for a location in metropolitan France.">
+    <title>CC Finder France — RGF93 / CC9 Determination</title>
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="preconnect" href="https://tile.openstreetmap.org">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
     <header class="topbar">
-        <a class="brand" href="#" aria-label="Atlas WebGIS home">
-            <span class="brand-mark" aria-hidden="true">A</span>
-            <span class="brand-name">ATLAS</span>
-            <span class="brand-divider" aria-hidden="true"></span>
-            <span class="brand-section">WEBGIS</span>
+        <a class="brand" href="#" aria-label="CC Finder France home">
+            <span class="brand-mark" aria-hidden="true">CC</span>
+            <span class="brand-copy">
+                <span class="brand-name">CC FINDER</span>
+                <span class="brand-region">FRANCE <span class="brand-divider">/</span> RGF93</span>
+            </span>
         </a>
-        <div class="view-label">
+        <div class="header-meta">
             <span class="status-dot" aria-hidden="true"></span>
-            <span>WORLD VIEW</span>
+            <span>CC9 PROJECTION TOOL</span>
         </div>
-        <button class="locate-button" id="locate-button" type="button" title="Locate me">
-            <span class="locate-icon" aria-hidden="true">&#8982;</span>
-            <span>Locate me</span>
-        </button>
+        <span class="header-version">METROPOLITAN FRANCE</span>
     </header>
 
-    <main class="map-shell">
-        <div id="map" role="application" aria-label="Interactive map of the world"></div>
-        <section class="map-readout" aria-label="Location details" aria-live="polite">
-            <div class="readout-heading">
-                <span class="readout-label">YOUR POSITION</span>
-                <span id="location-status">Use Locate me</span>
+    <main class="workspace">
+        <section class="panel" aria-label="Coordinate and projection details">
+            <div class="intro">
+                <p class="eyebrow">RGF93 / LAMBERT CONFORMAL CONIC</p>
+                <h1>Find your CC zone</h1>
+                <p class="subtitle">Find the appropriate Conformal Conic projection for any point in metropolitan France.</p>
             </div>
-            <div class="readout-row">
-                <span class="readout-label">WGS84</span>
-                <span id="coordinates">--</span>
-            </div>
-            <div class="readout-row cc-row">
-                <span class="readout-label">LAMBERT CC9</span>
-                <span id="projection-details">Not determined</span>
-            </div>
-            <div class="readout-row">
-                <span class="readout-label">X / Y</span>
-                <span id="cartesian-coordinates">X -- · Y --</span>
-            </div>
-            <div class="readout-footer">
-                <span>Coordinates shared with <a href="https://geo.api.gouv.fr/" target="_blank" rel="noopener noreferrer">geo.api.gouv.fr</a> to verify mainland coverage</span>
-                <span>ZOOM <span id="zoom-level">--</span></span>
-            </div>
+
+            <section class="input-card" aria-label="Choose a location">
+                <div class="tabs" role="tablist" aria-label="Location input method">
+                    <button class="tab is-active" id="tab-address" type="button" role="tab" aria-selected="true" aria-controls="address-panel" data-tab="address">
+                        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 8.3c0 4.1-6 9.2-6 9.2S4 12.4 4 8.3a6 6 0 1 1 12 0Z"/><circle cx="10" cy="8" r="2"/></svg>
+                        Address
+                    </button>
+                    <button class="tab" id="tab-coordinates" type="button" role="tab" aria-selected="false" aria-controls="coordinates-panel" data-tab="coordinates" tabindex="-1">
+                        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5.5 7 3l6 2 4-2v11.5L13 17l-6-2-4 2V5.5Z"/><path d="M7 3v12m6-10v12"/></svg>
+                        Coordinates
+                    </button>
+                    <button class="tab" id="tab-map" type="button" role="tab" aria-selected="false" aria-controls="map-panel" data-tab="map" tabindex="-1">
+                        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5.5 7 3l6 2 4.5-2v11.5L13 17l-6-2-4.5 2V5.5Z"/><path d="m7 3 0 12m6-10v12"/></svg>
+                        Map
+                    </button>
+                </div>
+
+                <div class="tab-panel" id="address-panel" role="tabpanel" aria-labelledby="tab-address">
+                    <form id="address-form" class="search-form">
+                        <label for="address-input">French address</label>
+                        <div class="field-with-button">
+                            <input id="address-input" name="address" type="search" autocomplete="street-address" placeholder="e.g. 5 rue de la Chapelle, Charnay-lès-Mâcon" required>
+                            <button class="icon-button search-button" type="submit" aria-label="Search address" title="Search address">
+                                <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+                            </button>
+                        </div>
+                        <p class="field-help">Search powered by the French national address service.</p>
+                    </form>
+                    <div id="address-suggestions" class="suggestions" role="listbox" aria-label="Address suggestions" hidden></div>
+                </div>
+
+                <div class="tab-panel" id="coordinates-panel" role="tabpanel" aria-labelledby="tab-coordinates" hidden>
+                    <form id="coordinates-form" class="coordinates-form">
+                        <div class="coordinate-fields">
+                            <div>
+                                <label for="latitude-input">Latitude</label>
+                                <input id="latitude-input" name="latitude" inputmode="decimal" placeholder="46.305744 or DMS" autocomplete="off" required>
+                            </div>
+                            <div>
+                                <label for="longitude-input">Longitude</label>
+                                <input id="longitude-input" name="longitude" inputmode="decimal" placeholder="4.785530 or DMS" autocomplete="off" required>
+                            </div>
+                        </div>
+                        <p class="field-help">Decimal degrees or DMS, e.g. 46° 18' 20.68&quot; N.</p>
+                        <button class="primary-button full-button" type="submit">Determine CC zone <span aria-hidden="true">→</span></button>
+                    </form>
+                </div>
+
+                <div class="tab-panel map-instructions" id="map-panel" role="tabpanel" aria-labelledby="tab-map" hidden>
+                    <span class="instruction-icon" aria-hidden="true">+</span>
+                    <p><strong>Select a point on the map</strong><br>Click the map to place a marker and determine its CC zone.</p>
+                </div>
+            </section>
+
+            <section id="result-panel" class="result-card" aria-live="polite" aria-label="Projection recommendation">
+                <div class="empty-result" id="empty-result">
+                    <span class="empty-symbol" aria-hidden="true">°</span>
+                    <p>Select a location to see its recommended projection.</p>
+                </div>
+                <div id="result-content" hidden>
+                    <div class="result-heading">
+                        <div>
+                            <p class="eyebrow">RECOMMENDED PROJECTION</p>
+                            <h2 id="recommended-cc">CC46</h2>
+                        </div>
+                        <span class="epsg-badge" id="epsg-code">EPSG:3946</span>
+                    </div>
+                    <p class="crs-name" id="crs-name">RGF93 / CC46</p>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <span class="result-label">LATITUDE</span>
+                            <strong id="result-latitude">—</strong>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">LONGITUDE</span>
+                            <strong id="result-longitude">—</strong>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">PARALLEL OF ORIGIN</span>
+                            <strong id="parallel-origin">—</strong>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">NOMINAL ZONE LIMITS</span>
+                            <strong id="zone-limits">—</strong>
+                        </div>
+                    </div>
+                    <div class="distortion-block">
+                        <div>
+                            <span class="result-label">ESTIMATED LINEAR DISTORTION</span>
+                            <p class="distortion-value"><strong id="distortion-value">—</strong><span>cm/km</span></p>
+                        </div>
+                        <span id="distortion-interpretation" class="interpretation"></span>
+                    </div>
+                    <p id="recommendation-explanation" class="explanation"></p>
+                    <div id="boundary-notice" class="notice" role="status" hidden></div>
+                    <div id="compare-panel" class="compare-panel" hidden></div>
+                    <div class="result-actions">
+                        <button id="compare-button" class="secondary-button compare-button" type="button" aria-expanded="false">
+                            Compare both zones
+                        </button>
+                        <button id="copy-button" class="secondary-button" type="button">
+                            <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="7" width="10" height="11" rx="1"/><path d="M13 7V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3"/></svg>
+                            <span>Copy CRS information</span>
+                        </button>
+                        <div class="export-actions">
+                            <button id="export-json" class="secondary-button compact-button" type="button" title="Export result as JSON">
+                                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10m-4-4 4 4 4-4M4 13v4h12v-4"/></svg>
+                                JSON
+                            </button>
+                            <button id="export-csv" class="secondary-button compact-button" type="button" title="Export result as CSV">
+                                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10m-4-4 4 4 4-4M4 13v4h12v-4"/></svg>
+                                CSV
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <details class="method-note">
+                <summary>About the distortion estimate</summary>
+                <p>This is a simplified educational estimate: 3.1 × (latitude − parallel of origin)². It depends mainly on latitude, not longitude. The actual Lambert projection has zero scale distortion on its standard parallels (±0.75° from the origin); this simplified estimate does not model that behavior.</p>
+                <p>For contractual, cadastral, or high-precision calculations, use the official IGN algorithms.</p>
+            </details>
         </section>
-        <div id="map-message" class="map-message" role="status" hidden></div>
+
+        <section class="map-column" aria-label="Interactive map">
+            <div class="map-toolbar">
+                <div>
+                    <span class="map-title">LOCATION MAP</span>
+                    <span class="map-subtitle">Click anywhere to select a point</span>
+                </div>
+                <span class="coordinate-system">WGS84 · EPSG:4326</span>
+            </div>
+            <div class="map-shell">
+                <div id="map" role="application" aria-label="Interactive OpenStreetMap of metropolitan France"></div>
+                <div id="map-message" class="map-message" role="status" hidden></div>
+                <div class="map-hint"><span class="status-dot" aria-hidden="true"></span> CC9 zones · Mainland France</div>
+            </div>
+            <p class="map-attribution-note">Map data © OpenStreetMap contributors · Address geocoding © IGN Géoplateforme</p>
+        </section>
     </main>
 
+    <footer class="page-footer">
+        <span>CC Finder France</span>
+        <span>RGF93 / ETRS89 · Lambert Conformal Conic · Units in metres</span>
+    </footer>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
     <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script defer src="https://unpkg.com/proj4@2.12.1/dist/proj4.js"></script>
-    <script defer src="js/main.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>

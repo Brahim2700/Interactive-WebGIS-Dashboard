@@ -1,39 +1,45 @@
-# Interactive WebGIS Dashboard
+# CC Finder France
 
-## Project Overview
-A learning project to build an Interactive WebGIS Dashboard from scratch, combining GIS expertise with web development skills.
+CC Finder France determines the recommended RGF93 / Lambert CC9 zone from a point's latitude. It supports French address search, decimal or DMS coordinates, and map selection. It is a static, framework-free website; Leaflet and OpenStreetMap provide the map, and the IGN Géoplateforme national geocoder provides address lookup.
 
-## Current Status
-✅ Step 1: Basic blue page with "Under Construction" message
+## Project structure
 
-## Project Structure
-```
-Interactive WebGIS Dashboard/
-├── index.html          # Main HTML file
+```text
+.
+├── index.html
 ├── css/
-│   └── main.css        # Styling
+│   └── main.css
 ├── js/
-│   └── main.js         # JavaScript interactivity
-├── data/               # For GIS data files
-└── README.md           # This file
+│   ├── crs.js
+│   └── main.js
+├── tests/
+│   └── crs.test.js
+├── package.json
+└── README.md
 ```
 
-## Technologies We'll Use
-- HTML5
-- CSS3 (with animations and responsive design)
-- JavaScript (ES6+)
-- Leaflet.js (for mapping)
-- GeoJSON (for GIS data)
+## Run locally
 
-## Learning Resources
-- [HTML Guide](https://developer.mozilla.org/en-US/docs/Web/HTML)
-- [CSS Guide](https://developer.mozilla.org/en-US/docs/Web/CSS)
-- [JavaScript Guide](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
-- [Leaflet Documentation](https://leafletjs.com/)
+Serve this directory over HTTP so browser modules and geocoding requests work. For example, with Python installed:
 
-## Next Steps
-1. ✅ Create blue page
-2. Add interactive map component
-3. Add GIS layers
-4. Create control panel
-5. Add data visualization
+```powershell
+python -m http.server 8000
+```
+
+Then open `http://localhost:8000`. The app uses public external services and needs an internet connection to load the map and search addresses.
+
+## Tests
+
+Node.js 18 or later is recommended. Run:
+
+```powershell
+npm test
+```
+
+## Method and limitations
+
+For latitudes from 41.5° to 50.5° N, the tool recommends the nearest integer latitude as the CC zone, with EPSG code `3900 + zone` (3942–3950). Latitude outside that interval is reported as outside nominal CC9 coverage. Points are checked against the requested metropolitan France coordinate bounds before a result is produced.
+
+The displayed linear distortion is the requested simplified educational estimate `3.1 × (latitude − parallel of origin)²` cm/km. It is not a substitute for projection scale-factor calculations. The standard parallels are 0.75° either side of the origin; true Lambert scale distortion is zero there, a behavior this simplified estimate does not model. Use official IGN algorithms for contractual, cadastral, or high-precision work.
+
+Address search uses the public IGN Géoplateforme geocoding endpoint (`data.geopf.fr`). Map tiles are © OpenStreetMap contributors.
