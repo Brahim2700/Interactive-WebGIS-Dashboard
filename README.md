@@ -26,7 +26,7 @@ Serve this directory over HTTP so browser modules and geocoding requests work. F
 python -m http.server 8000
 ```
 
-Then open `http://localhost:8000`. The app uses public external services and needs an internet connection to load the map and search addresses. Device location requires a secure context (HTTPS, or localhost) and browser permission.
+Then open `http://localhost:8000`. The app uses public external services and needs an internet connection to load the map and search addresses. Device location requires a secure context (HTTPS, or localhost) and browser permission. Some in-app browsers block GPS; open the site in the phone's full browser (for Messenger, use the ⋯ menu and select “Open in browser”) if location times out.
 
 ## Tests
 

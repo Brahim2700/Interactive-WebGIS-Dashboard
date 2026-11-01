@@ -47,6 +47,8 @@ const IGN_NOTE = "Simplified estimate. For official calculations, use IGN algori
 let currentResult = null;
 let requestId = 0;
 let toastTimer;
+let locationWatchId = null;
+let locationWatchTimer = null;
 let map;
 let marker;
 
@@ -61,6 +63,52 @@ function setLocationStatus(message, state = "") {
         if (state) status.dataset.state = state;
         else delete status.dataset.state;
     }
+}
+
+function stopLocationWatch() {
+    if (locationWatchId !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(locationWatchId);
+    }
+    locationWatchId = null;
+    window.clearTimeout(locationWatchTimer);
+    locationWatchTimer = null;
+}
+
+function resetLocateButtons() {
+    for (const button of elements.locateButtons) {
+        button.disabled = false;
+        button.querySelector("span").textContent = "Use my current location";
+    }
+}
+
+function isEmbeddedMobileBrowser() {
+    return /FBAN|FBAV|FB_IAB|Messenger|Instagram|TikTok|Line\//i.test(navigator.userAgent);
+}
+
+function locationHelpMessage(error) {
+    const embeddedHelp = isEmbeddedMobileBrowser()
+        ? " This page is open inside an app browser, which may block GPS. In Messenger, tap ⋯ at the top, choose Open in browser (Chrome), then allow location for this site."
+        : " Check that location permission is allowed for this site and that your phone's Location Services are on.";
+
+    if (error.code === error.PERMISSION_DENIED) {
+        return `Location permission was denied.${embeddedHelp}`;
+    }
+    if (error.code === error.POSITION_UNAVAILABLE) {
+        return `Your phone could not determine a location.${embeddedHelp}`;
+    }
+    if (error.code === error.TIMEOUT) {
+        return `The phone did not return a location in time.${embeddedHelp}`;
+    }
+    return `Could not get your current location. ${error.message || ""}${embeddedHelp}`;
+}
+
+function finishLocationError(error, locationRequestId) {
+    if (locationRequestId !== requestId) return;
+    stopLocationWatch();
+    resetLocateButtons();
+    const message = locationHelpMessage(error);
+    setLocationStatus(message, "error");
+    showMapMessage(message);
 }
 
 function showToast(message) {
@@ -174,6 +222,8 @@ function showOutsideCoverage(latitude, address = "", accuracy = null) {
 
 function selectLocation({ latitude, longitude, inputType, address = "", accuracy = null }) {
     requestId += 1;
+    stopLocationWatch();
+    resetLocateButtons();
     elements.mapMessage.hidden = true;
     elements.addressSuggestions.hidden = true;
 
@@ -263,6 +313,8 @@ async function searchAddress(event) {
     const query = elements.addressInput.value.trim();
     if (!query) return;
     const queryId = ++requestId;
+    stopLocationWatch();
+    resetLocateButtons();
     elements.addressSuggestions.hidden = true;
     elements.mapMessage.hidden = true;
     const button = elements.addressForm.querySelector('button[type="submit"]');
@@ -301,6 +353,9 @@ async function searchAddress(event) {
 
 function submitCoordinates(event) {
     event.preventDefault();
+    requestId += 1;
+    stopLocationWatch();
+    resetLocateButtons();
     try {
         const latitude = dmsToDecimal(elements.latitudeInput.value, "latitude");
         const longitude = dmsToDecimal(elements.longitudeInput.value, "longitude");
@@ -328,45 +383,77 @@ function locateCurrentPosition() {
 
     const locationRequestId = ++requestId;
     elements.mapMessage.hidden = true;
-    setLocationStatus("Requesting your device location. Allow location access if your browser asks.", "pending");
+    setLocationStatus("Requesting your device location. Allow access if your browser asks. Keep this page open.", "pending");
     for (const button of elements.locateButtons) {
         button.disabled = true;
         button.querySelector("span").textContent = "Finding your location…";
     }
 
-    navigator.geolocation.getCurrentPosition(
-        ({ coords }) => {
-            for (const button of elements.locateButtons) {
-                button.disabled = false;
-                button.querySelector("span").textContent = "Use my current location";
-            }
-            if (locationRequestId !== requestId) return;
-            selectLocation({
-                latitude: coords.latitude,
-                longitude: coords.longitude,
-                inputType: "gps",
-                accuracy: coords.accuracy
-            });
-        },
-        (error) => {
-            for (const button of elements.locateButtons) {
-                button.disabled = false;
-                button.querySelector("span").textContent = "Use my current location";
-            }
-            if (locationRequestId !== requestId) return;
+    const handlePosition = ({ coords }) => {
+        if (locationRequestId !== requestId) return;
+        stopLocationWatch();
+        resetLocateButtons();
+        selectLocation({
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            inputType: "gps",
+            accuracy: coords.accuracy
+        });
+    };
 
-            const message = error.code === error.PERMISSION_DENIED
-                ? "Location permission was denied. Enable location for this site in your phone and browser settings, then try again."
-                : error.code === error.POSITION_UNAVAILABLE
-                    ? "Your phone could not determine a location. Turn on Location Services and check browser location permission."
-                    : error.code === error.TIMEOUT
-                        ? "Finding your location took too long. Check that Location Services are on and try again."
-                        : `Could not get your current location. ${error.message}`;
-            setLocationStatus(message, "error");
-            showMapMessage(message);
-        },
-        { enableHighAccuracy: false, timeout: 30000, maximumAge: 60000 }
-    );
+    const startLiveLocationWatch = (initialError) => {
+        if (locationRequestId !== requestId) return;
+        if (initialError.code === initialError.PERMISSION_DENIED) {
+            finishLocationError(initialError, locationRequestId);
+            return;
+        }
+
+        const embeddedBrowserTip = isEmbeddedMobileBrowser()
+            ? " If this is Messenger, use ⋯ → Open in browser (Chrome) to let the full browser access GPS."
+            : "";
+        setLocationStatus(
+            `The quick lookup did not return a fix. Switching to live GPS; keep this page open for up to 45 seconds.${embeddedBrowserTip}`,
+            "pending"
+        );
+        try {
+            locationWatchId = navigator.geolocation.watchPosition(
+                handlePosition,
+                (error) => finishLocationError(error, locationRequestId),
+                { enableHighAccuracy: true, timeout: 45000, maximumAge: 30000 }
+            );
+            locationWatchTimer = window.setTimeout(() => {
+                finishLocationError(
+                    { code: 3, TIMEOUT: 3, message: "Live GPS timed out." },
+                    locationRequestId
+                );
+            }, 47000);
+        } catch (error) {
+            finishLocationError(
+                { code: 2, POSITION_UNAVAILABLE: 2, message: error.message },
+                locationRequestId
+            );
+        }
+    };
+
+    if (isEmbeddedMobileBrowser()) {
+        setLocationStatus(
+            "Messenger's in-app browser may block GPS. If it does not find you, tap ⋯ at the top and choose Open in browser (Chrome).",
+            "pending"
+        );
+    }
+
+    try {
+        navigator.geolocation.getCurrentPosition(
+            handlePosition,
+            startLiveLocationWatch,
+            { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 }
+        );
+    } catch (error) {
+        finishLocationError(
+            { code: 2, POSITION_UNAVAILABLE: 2, message: error.message },
+            locationRequestId
+        );
+    }
 }
 
 function makeExportObject(result) {
