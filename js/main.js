@@ -15,6 +15,7 @@ const elements = {
     addressForm: document.getElementById("address-form"),
     addressInput: document.getElementById("address-input"),
     addressSuggestions: document.getElementById("address-suggestions"),
+    locateButtons: [...document.querySelectorAll("[data-locate]")],
     coordinatesForm: document.getElementById("coordinates-form"),
     latitudeInput: document.getElementById("latitude-input"),
     longitudeInput: document.getElementById("longitude-input"),
@@ -294,6 +295,52 @@ function submitCoordinates(event) {
     }
 }
 
+function locateCurrentPosition() {
+    if (!navigator.geolocation) {
+        showMapMessage("Current location requires a secure HTTPS connection and a browser that supports geolocation.");
+        return;
+    }
+
+    const locationRequestId = ++requestId;
+    elements.mapMessage.hidden = true;
+    for (const button of elements.locateButtons) {
+        button.disabled = true;
+        button.querySelector("span").textContent = "Finding your location…";
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+            for (const button of elements.locateButtons) {
+                button.disabled = false;
+                button.querySelector("span").textContent = "Use my current location";
+            }
+            if (locationRequestId !== requestId) return;
+            selectLocation({
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+                inputType: "gps"
+            });
+        },
+        (error) => {
+            for (const button of elements.locateButtons) {
+                button.disabled = false;
+                button.querySelector("span").textContent = "Use my current location";
+            }
+            if (locationRequestId !== requestId) return;
+
+            const message = error.code === error.PERMISSION_DENIED
+                ? "Location access was denied. Allow location access in your browser settings and try again."
+                : error.code === error.POSITION_UNAVAILABLE
+                    ? "Your current location could not be determined. Check that location services are enabled."
+                    : error.code === error.TIMEOUT
+                        ? "The location request timed out. Please try again."
+                        : `Could not get your current location. ${error.message}`;
+            showMapMessage(message);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+}
+
 function makeExportObject(result) {
     return {
         input_type: result.input_type,
@@ -364,6 +411,9 @@ for (const tab of elements.tabs) {
 
 elements.addressForm.addEventListener("submit", searchAddress);
 elements.coordinatesForm.addEventListener("submit", submitCoordinates);
+for (const button of elements.locateButtons) {
+    button.addEventListener("click", locateCurrentPosition);
+}
 elements.compareButton.addEventListener("click", () => {
     const expanded = elements.compareButton.getAttribute("aria-expanded") === "true";
     elements.comparePanel.hidden = expanded;

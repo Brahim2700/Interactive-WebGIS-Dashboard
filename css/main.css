@@ -313,6 +313,42 @@ a:focus-visible {
     line-height: 1.45;
 }
 
+.location-button {
+    display: inline-flex;
+    min-height: 33px;
+    align-items: center;
+    gap: 7px;
+    margin-top: 10px;
+    padding: 0 10px;
+    border: 1px solid #d6e0e8;
+    border-radius: 5px;
+    color: #36556e;
+    background: #f8fbfd;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.location-button:hover:not(:disabled) {
+    border-color: #a9c2d3;
+    background: #edf5fa;
+}
+
+.location-button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.location-button svg {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.6;
+}
+
 .coordinate-fields {
     display: grid;
     grid-template-columns: 1fr 1fr;

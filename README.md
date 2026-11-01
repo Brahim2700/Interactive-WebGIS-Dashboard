@@ -1,6 +1,6 @@
 # CC Finder France
 
-CC Finder France determines the recommended RGF93 / Lambert CC9 zone from a point's latitude. It supports French address search, decimal or DMS coordinates, and map selection. It is a static, framework-free website; Leaflet and OpenStreetMap provide the map, and the IGN Géoplateforme national geocoder provides address lookup.
+CC Finder France determines the recommended RGF93 / Lambert CC9 zone from a point's latitude. It supports French address search, decimal or DMS coordinates, current-device location, and map selection. It is a static, framework-free website; Leaflet and OpenStreetMap provide the map, and the IGN Géoplateforme national geocoder provides address lookup.
 
 ## Project structure
 
@@ -26,7 +26,7 @@ Serve this directory over HTTP so browser modules and geocoding requests work. F
 python -m http.server 8000
 ```
 
-Then open `http://localhost:8000`. The app uses public external services and needs an internet connection to load the map and search addresses.
+Then open `http://localhost:8000`. The app uses public external services and needs an internet connection to load the map and search addresses. Device location requires a secure context (HTTPS, or localhost) and browser permission.
 
 ## Tests
 
