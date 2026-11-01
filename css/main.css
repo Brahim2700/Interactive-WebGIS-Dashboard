@@ -349,6 +349,30 @@ a:focus-visible {
     stroke-width: 1.6;
 }
 
+.location-status {
+    min-height: 0;
+    margin: 0;
+    color: #64778a;
+    font-size: 10px;
+    line-height: 1.45;
+}
+
+.location-status:not(:empty) {
+    margin-top: 6px;
+}
+
+.location-status[data-state="pending"] {
+    color: #496d88;
+}
+
+.location-status[data-state="success"] {
+    color: #27704c;
+}
+
+.location-status[data-state="error"] {
+    color: #9a4f28;
+}
+
 .coordinate-fields {
     display: grid;
     grid-template-columns: 1fr 1fr;

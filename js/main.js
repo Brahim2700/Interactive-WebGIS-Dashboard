@@ -16,6 +16,7 @@ const elements = {
     addressInput: document.getElementById("address-input"),
     addressSuggestions: document.getElementById("address-suggestions"),
     locateButtons: [...document.querySelectorAll("[data-locate]")],
+    locationStatuses: [...document.querySelectorAll(".location-status")],
     coordinatesForm: document.getElementById("coordinates-form"),
     latitudeInput: document.getElementById("latitude-input"),
     longitudeInput: document.getElementById("longitude-input"),
@@ -52,6 +53,14 @@ let marker;
 function showMapMessage(message) {
     elements.mapMessage.textContent = message;
     elements.mapMessage.hidden = false;
+}
+
+function setLocationStatus(message, state = "") {
+    for (const status of elements.locationStatuses) {
+        status.textContent = message;
+        if (state) status.dataset.state = state;
+        else delete status.dataset.state;
+    }
 }
 
 function showToast(message) {
@@ -153,13 +162,17 @@ function renderResult(result) {
     elements.compareButton.setAttribute("aria-expanded", String(!elements.comparePanel.hidden));
 }
 
-function showOutsideCoverage(latitude, address = "") {
+function showOutsideCoverage(latitude, address = "", accuracy = null) {
     clearResult();
-    showMapMessage(`Latitude ${latitude.toFixed(5)}° is outside the nominal coverage of the CC42–CC50 zones (41.5°–50.5° N).`);
+    const message = `Latitude ${latitude.toFixed(5)}° is outside the nominal coverage of the CC42–CC50 zones (41.5°–50.5° N).`;
+    showMapMessage(message);
+    if (accuracy !== null) {
+        setLocationStatus(`Location found (±${Math.round(accuracy)} m), but it is outside CC9 coverage. ${message}`, "error");
+    }
     if (address) elements.addressInput.value = address;
 }
 
-function selectLocation({ latitude, longitude, inputType, address = "" }) {
+function selectLocation({ latitude, longitude, inputType, address = "", accuracy = null }) {
     requestId += 1;
     elements.mapMessage.hidden = true;
     elements.addressSuggestions.hidden = true;
@@ -183,12 +196,15 @@ function selectLocation({ latitude, longitude, inputType, address = "" }) {
     if (!isInMetropolitanFranceBounds(latitude, longitude)) {
         clearResult();
         showMapMessage(OUTSIDE_FRANCE_MESSAGE);
+        if (inputType === "gps") {
+            setLocationStatus(`Your device location is ${formatDegrees(latitude, "N", "S")}, ${formatDegrees(longitude, "E", "W")}${accuracy !== null ? ` (±${Math.round(accuracy)} m)` : ""}. ${OUTSIDE_FRANCE_MESSAGE}`, "error");
+        }
         return;
     }
 
     const ccNumber = getRecommendedCC(latitude);
     if (ccNumber === null) {
-        showOutsideCoverage(latitude, address);
+        showOutsideCoverage(latitude, address, accuracy);
         return;
     }
 
@@ -212,6 +228,11 @@ function selectLocation({ latitude, longitude, inputType, address = "" }) {
 
     if (address) elements.addressInput.value = address;
     renderResult(result);
+    if (inputType === "gps") {
+        elements.latitudeInput.value = latitude.toFixed(6);
+        elements.longitudeInput.value = longitude.toFixed(6);
+        setLocationStatus(`Location found (±${Math.round(accuracy ?? 0)} m). Recommended projection: CC${ccNumber}, EPSG:${result.epsg}.`, "success");
+    }
 }
 
 function showSuggestions(features, queryId) {
@@ -297,12 +318,17 @@ function submitCoordinates(event) {
 
 function locateCurrentPosition() {
     if (!navigator.geolocation) {
-        showMapMessage("Current location requires a secure HTTPS connection and a browser that supports geolocation.");
+        const message = window.isSecureContext
+            ? "This browser does not support device location."
+            : "Device location requires a secure connection. Open the site using HTTPS.";
+        setLocationStatus(message, "error");
+        showMapMessage(message);
         return;
     }
 
     const locationRequestId = ++requestId;
     elements.mapMessage.hidden = true;
+    setLocationStatus("Requesting your device location. Allow location access if your browser asks.", "pending");
     for (const button of elements.locateButtons) {
         button.disabled = true;
         button.querySelector("span").textContent = "Finding your location…";
@@ -318,7 +344,8 @@ function locateCurrentPosition() {
             selectLocation({
                 latitude: coords.latitude,
                 longitude: coords.longitude,
-                inputType: "gps"
+                inputType: "gps",
+                accuracy: coords.accuracy
             });
         },
         (error) => {
@@ -329,15 +356,16 @@ function locateCurrentPosition() {
             if (locationRequestId !== requestId) return;
 
             const message = error.code === error.PERMISSION_DENIED
-                ? "Location access was denied. Allow location access in your browser settings and try again."
+                ? "Location permission was denied. Enable location for this site in your phone and browser settings, then try again."
                 : error.code === error.POSITION_UNAVAILABLE
-                    ? "Your current location could not be determined. Check that location services are enabled."
+                    ? "Your phone could not determine a location. Turn on Location Services and check browser location permission."
                     : error.code === error.TIMEOUT
-                        ? "The location request timed out. Please try again."
+                        ? "Finding your location took too long. Check that Location Services are on and try again."
                         : `Could not get your current location. ${error.message}`;
+            setLocationStatus(message, "error");
             showMapMessage(message);
         },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        { enableHighAccuracy: false, timeout: 30000, maximumAge: 60000 }
     );
 }
 
